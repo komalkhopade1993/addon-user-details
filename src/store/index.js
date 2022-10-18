@@ -4,6 +4,8 @@ import axios from "axios";
 
 Vue.use(Vuex);
 
+const baseUrl = "http://122.170.1.83:8899/api/v1/user";
+
 export default new Vuex.Store({
   state: {
     userList: [],
@@ -29,7 +31,7 @@ export default new Vuex.Store({
   },
   actions: {
     async fetchuserList({ commit }) {
-      const response = await axios.get("http://122.170.1.83:8899/api/v1/user");
+      const response = await axios.get(baseUrl);
       commit("setuserList", response.data.result);
     },
 
@@ -43,15 +45,12 @@ export default new Vuex.Store({
       data.append("longitude", addUser.longitude);
       data.append("image", addUser.image);
       data.append("address", addUser.address);
-      const response = await axios.post(
-        `http://122.170.1.83:8899/api/v1/user`,
-        data
-      );
+      const response = await axios.post(baseUrl, data);
       commit("addNewUser", response.data.result);
     },
 
     async updateUser({ commit }, updateUser) {
-      console.log(commit);
+      console.log(commit, updateUser);
       var data = new FormData();
       data.append("name", updateUser.name);
       data.append("mobileNo", updateUser.mobileNo);
@@ -61,25 +60,18 @@ export default new Vuex.Store({
       data.append("image", updateUser.image);
       data.append("address", updateUser.address);
 
-      const response = await axios.put(
-        `http://122.170.1.83:8899/api/v1/user/${updateUser.id}`,
-        data
-      );
+      const response = await axios.put(`${baseUrl}/${updateUser.id}`, data);
       console.log(response);
     },
 
     async displayUser({ commit }, userId) {
-      const response = await axios.get(
-        `http://122.170.1.83:8899/api/v1/user/${userId}`
-      );
+      const response = await axios.get(`${baseUrl}/${userId}`);
 
       commit("displayUserDetails", response.data.result);
     },
 
     async deleteUser({ commit }, userId) {
-      const response = await axios.delete(
-        `http://122.170.1.83:8899/api/v1/user/${userId}`
-      );
+      const response = await axios.delete(`${baseUrl}/${userId}`);
 
       commit("deleteNewUser", response.data.result);
     },

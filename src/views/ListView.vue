@@ -25,13 +25,24 @@
                   <v-row>
                     <v-col cols="12" sm="12" md="12">
                       <div class="d-flex flex-column">
-                        <label class="placeholder">Choose an Image</label>
+                        <div v-if="editedIndex > -1">
+                          <img
+                            width="200"
+                            :src="editedItem.imageUrl"
+                            :alt="editedItem.name"
+                          />
+                        </div>
+
+                        <label class="placeholder">Choose an Image </label>
                         <input
                           class="file-input"
                           ref="fileInput"
                           type="file"
                           @input="onSelectFile"
                         />
+                        <div v-if="selectImageFlag" class="pt-2">
+                          <label class="red--text darken-1">select image</label>
+                        </div>
                       </div>
                     </v-col>
                     <v-col cols="12" sm="6" md="12">
@@ -65,6 +76,7 @@
                         v-model="editedItem.latitude"
                         label="Enter latitude"
                         :rules="latitudeRules"
+                        type="number"
                         required
                       ></v-text-field>
                     </v-col>
@@ -73,6 +85,7 @@
                         v-model="editedItem.longitude"
                         label="Enter longitude"
                         :rules="longitudeRules"
+                        type="number"
                         required
                       ></v-text-field>
                     </v-col>
@@ -82,6 +95,7 @@
                         label="Enter Mobile No"
                         :rules="mobileRules"
                         required
+                        type="number"
                       ></v-text-field>
                     </v-col>
                   </v-row>
@@ -96,14 +110,32 @@
             </v-card>
           </v-form>
         </v-dialog>
+
+        <v-dialog v-model="dialogDelete" max-width="500px">
+          <v-card>
+            <v-card-title class="text-h5"
+              >Are you sure you want to delete this item?</v-card-title
+            >
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn color="blue darken-1" text @click="closeDelete"
+                >Cancel</v-btn
+              >
+              <v-btn color="blue darken-1" text @click="deleteItem()"
+                >Yes</v-btn
+              >
+              <v-spacer></v-spacer>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
       </v-toolbar>
     </template>
-    <template v-slot:[`item.image`]="{ item }">
-      <img width="50" :src="item.image" :alt="item.name" />
+    <template v-slot:[`item.imageUrl`]="{ item }">
+      <img width="50" :src="item.imageUrl" :alt="item.name" />
     </template>
     <template v-slot:[`item.actions`]="{ item }">
       <v-icon small class="mr-2" @click="editItem(item)"> mdi-pencil </v-icon>
-      <v-icon small @click="deleteItem(item)"> mdi-delete </v-icon>
+      <v-icon small @click="deleteUserConfirmation(item)"> mdi-delete </v-icon>
     </template>
   </v-data-table>
 </template>
@@ -128,6 +160,8 @@ export default {
     dialog: false,
     dialogDelete: false,
     displayUserDetailsFlag: false,
+    selectImageFlag: false,
+    currentDeletedUser: 0,
     headers: [
       {
         text: "Name ",
@@ -138,7 +172,7 @@ export default {
       { text: "Mobile", value: "mobileNo" },
       { text: "Email", value: "email" },
       { text: "Address", value: "address" },
-      { text: "Image", value: "image" },
+      { text: "Image", value: "imageUrl" },
       { text: "Actions", value: "actions", sortable: false },
     ],
     desserts: [],
@@ -157,12 +191,10 @@ export default {
       mobileNo: "",
       email: "",
       address: "",
-      imageUrl: "",
+      image: "",
       latitude: "",
       longitude: "",
     },
-    imageData: null,
-    imagePath: null,
   }),
 
   computed: {
@@ -176,6 +208,9 @@ export default {
     dialog(val) {
       val || this.close();
     },
+    dialogDelete(val) {
+      val || this.closeDelete();
+    },
   },
 
   created() {
@@ -188,6 +223,7 @@ export default {
     onSelectFile() {
       const input = this.$refs.fileInput;
       this.editedItem.image = input.files[0];
+      this.selectImageFlag = false;
     },
 
     editItem(item) {
@@ -196,19 +232,25 @@ export default {
       this.editedItem = Object.assign({}, item);
     },
 
-  async deleteItem(item) {
-      console.log(this.editedIndex, "index", item.id);
-      await this.deleteUser(item.id);
-      this.fetchuserList();
+    deleteUserConfirmation(item) {
+      this.currentDeletedUser = item;
+      this.dialogDelete = true;
+    },
+
+    async deleteItem() {
+      await this.deleteUser(this.currentDeletedUser.id);
+      await this.fetchuserList();
+      this.closeDelete();
+    },
+
+    closeDelete() {
+      this.dialogDelete = false;
     },
 
     close() {
       this.dialog = false;
       this.editedIndex = -1;
-      this.$nextTick(() => {
-        this.editedItem = Object.assign({}, this.defaultItem);
-        this.editedIndex = -1;
-      });
+      this.editedItem = Object.assign({}, this.defaultItem);
     },
 
     async save() {
@@ -216,8 +258,15 @@ export default {
         if (this.editedIndex > -1) {
           await this.updateUser(this.editedItem);
           this.fetchuserList();
+          this.editedItem = Object.assign({}, this.defaultItem);
         } else {
-          this.addUser(this.editedItem);
+          if (this.editedItem.image == "") {
+            this.selectImageFlag = true;
+            return;
+          }
+
+          await this.addUser(this.editedItem);
+          this.editedItem = Object.assign({}, this.defaultItem);
         }
       } else {
         return;
